@@ -15,7 +15,13 @@ load_dotenv()
 router = APIRouter(prefix="/api", tags=["git"])
 
 PROJECT_ROOT = os.getenv("PROJECT_ROOT", "/Users/planetebeauty/Documents/copilote-planetebeauty")
-git_manager = GitManager(PROJECT_ROOT)
+
+def get_git_manager():
+    """Initialise GitManager uniquement quand nécessaire"""
+    try:
+        return GitManager(PROJECT_ROOT)
+    except Exception as e:
+        raise ValueError(f"Git repository not available: {e}")
 
 class GitCommitRequest(BaseModel):
     message: str
@@ -38,13 +44,16 @@ async def git_commit(
     Returns:
         Résultat du commit
     """
-    result = git_manager.commit(
-        message=request.message,
-        files=request.files,
-        push=request.push
-    )
-    
-    return result
+    try:
+        git_manager = get_git_manager()
+        result = git_manager.commit(
+            message=request.message,
+            files=request.files,
+            push=request.push
+        )
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 @router.get("/git_status")
 async def git_status(api_key: str = Depends(verify_api_key)):
@@ -54,6 +63,9 @@ async def git_status(api_key: str = Depends(verify_api_key)):
     Returns:
         Statut Git (branch, modified, untracked, ahead, behind)
     """
-    result = git_manager.status()
-    
-    return result
+    try:
+        git_manager = get_git_manager()
+        result = git_manager.status()
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e)}
